@@ -1,6 +1,75 @@
+<!doctype html>
 <html>
-  <body>
-    <h1>Teste 1</h1>
-    <h2>Teste 2</h2>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="robots" content="noindex" />
+  <title>Redirecionando…</title>
+  <!-- fallback se JS estiver desabilitado -->
+  <noscript><meta http-equiv="refresh" content="0; url=https://covildojabuti.com.br/"></noscript>
+</head>
+<body>
+<script>
+  const DESTS = {
+    ml: "https://lista.mercadolivre.com.br/pagina/covildojabuti/#global_position=1",
+    shopee: "https://shopee.com.br/covildojabuti#product_list",
+    site: "https://covildojabuti.com.br/"
+  };
+
+  // Opcional: mapa por item
+  const ITEMS = {
+    // "ml:123": "https://www.mercadolivre.com.br/link-do-produto-123",
+    // "shopee:ABC": "https://shopee.com.br/link-do-item-ABC"
+  };
+
+  const ENDPOINT = "https://script.google.com/macros/s/AKfycbyfX4ct_77xUkSljZswU7YtO3K_4bH7-S0trQCoTA8GqNnGAkD5KNGwOIpoBmrm3zA10A/exec";
+
+  const qs = new URLSearchParams(location.search);
+
+  // 1) whitelist do "to"
+  const rawTo = (qs.get("to") || "").toLowerCase().trim();
+  const to = Object.prototype.hasOwnProperty.call(DESTS, rawTo) ? rawTo : "site";
+
+  const item = (qs.get("item") || "").trim();
+
+  // UTMs defaults
+  const utm_source = qs.get("utm_source") || qs.get("from") || "direct";
+  const utm_medium = qs.get("utm_medium") || "social";
+  const utm_campaign = qs.get("utm_campaign") || "link";
+  const utm_content = qs.get("utm_content") || (to || "go");
+  const utm_term = qs.get("utm_term") || "";
+
+  // Resolve destino final
+  const itemKey = (to && item) ? `${to}:${item}` : "";
+  const base = (itemKey && ITEMS[itemKey]) ? ITEMS[itemKey] : DESTS[to];
+
+  const destUrl = new URL(base);
+
+  // 2) só seta UTM se ainda não existir no destino
+  const setIfMissing = (k, v) => { if (v && !destUrl.searchParams.has(k)) destUrl.searchParams.set(k, v); };
+  setIfMissing("utm_source", utm_source);
+  setIfMissing("utm_medium", utm_medium);
+  setIfMissing("utm_campaign", utm_campaign);
+  setIfMissing("utm_content", utm_content);
+  setIfMissing("utm_term", utm_term);
+
+  // Log (fire-and-forget)
+  const payload = {
+    ts: new Date().toISOString(),
+    to,
+    item,
+    dest: destUrl.toString(),
+    utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+    ref: document.referrer || "",
+    ua: navigator.userAgent || ""
+  };
+
+  try {
+    const blob = new Blob([JSON.stringify(payload)], { type: "text/plain;charset=utf-8" });
+    if (navigator.sendBeacon) navigator.sendBeacon(ENDPOINT, blob);
+    else fetch(ENDPOINT, { method: "POST", body: JSON.stringify(payload), keepalive: true, mode: "no-cors" });
+  } catch (e) {}
+
+  location.replace(destUrl.toString());
+</script>
+</body>
 </html>
